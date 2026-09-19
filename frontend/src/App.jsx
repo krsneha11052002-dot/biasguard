@@ -7,60 +7,52 @@ import BiasFindings from './components/BiasFindings';
 import MitigationSimulator from './components/MitigationSimulator';
 import BiasBounty from './components/BiasBounty';
 import AuditReport from './components/AuditReport';
+import StatsAnalytics from './components/StatsAnalytics';
 import DemoGuideModal from './components/DemoGuideModal';
+import Papa from 'papaparse';
 
-// Built-in fallback demo records
-const DEFAULT_DEMO_CSV = `id,gender,age_group,education,experience,region,score,qualified,selected
-1,Female,25-34,Master,4,North,82,1,0
-2,Male,35-44,Bachelor,8,North,78,1,1
-3,Male,25-34,Master,3,West,88,1,1
-4,Female,18-24,Bachelor,2,South,65,0,0
-5,Non-Binary,25-34,Bachelor,5,East,74,1,0
-6,Male,45-54,PhD,15,North,91,1,1
-7,Female,35-44,Master,9,East,84,1,0
-8,Male,25-34,Bachelor,4,West,72,0,1
-9,Female,25-34,PhD,6,North,89,1,1
-10,Male,35-44,Master,10,South,81,1,1
-11,Female,45-54,Bachelor,12,West,70,0,0
-12,Non-Binary,18-24,Bachelor,1,North,68,0,0
-13,Male,25-34,Master,5,East,85,1,1
-14,Female,35-44,Bachelor,7,South,79,1,0
-15,Male,18-24,Bachelor,2,North,73,0,1
-16,Female,25-34,Master,4,West,86,1,0
-17,Male,35-44,PhD,11,East,90,1,1
-18,Female,18-24,Bachelor,1,North,62,0,0
-19,Male,25-34,Bachelor,3,South,77,1,1
-20,Non-Binary,35-44,Master,8,West,83,1,0
-21,Female,45-54,PhD,14,North,87,1,1
-22,Male,25-34,Master,5,North,79,1,1
-23,Female,25-34,Bachelor,4,East,75,1,0
-24,Male,35-44,Bachelor,9,West,80,1,1
-25,Female,35-44,Master,6,South,81,1,0
-26,Male,18-24,Bachelor,2,East,69,0,0
-27,Non-Binary,25-34,Master,4,North,78,1,0
-28,Female,25-34,PhD,5,West,85,1,1
-29,Male,45-54,Bachelor,16,South,76,1,1
-30,Female,18-24,Bachelor,1,East,64,0,0
-31,Male,25-34,Master,4,North,84,1,1
-32,Female,35-44,Bachelor,8,West,77,1,0
-33,Male,35-44,PhD,12,East,93,1,1
-34,Female,25-34,Master,3,North,80,1,0
-35,Non-Binary,45-54,Bachelor,13,South,71,0,0
-36,Male,25-34,Bachelor,5,West,82,1,1
-37,Female,45-54,Master,15,East,88,1,1
-38,Male,18-24,Bachelor,2,North,70,0,1
-39,Female,25-34,Bachelor,4,South,76,1,0
-40,Male,35-44,Master,7,West,85,1,1
-41,Female,35-44,PhD,10,North,92,1,1
-42,Non-Binary,25-34,Bachelor,3,East,73,0,0
-43,Male,25-34,Master,6,South,83,1,1
-44,Female,18-24,Bachelor,1,West,66,0,0
-45,Male,45-54,Master,14,North,86,1,1
-46,Female,25-34,Master,5,East,82,1,0
-47,Male,35-44,Bachelor,8,South,78,1,1
-48,Female,35-44,Bachelor,6,North,74,0,0
-49,Non-Binary,35-44,PhD,9,West,89,1,1
-50,Male,25-34,Master,4,East,81,1,1`;
+// Built-in fallback demo CSV
+const DEFAULT_DEMO_CSV = `Candidate_ID,Gender,Age,Education,Experience_Years,Test_Score,Selected
+CAND_101,Female,28,Master,4,84,No
+CAND_102,Male,34,Bachelor,6,76,Yes
+CAND_103,Male,29,Master,3,89,Yes
+CAND_104,Female,23,Bachelor,2,68,No
+CAND_105,Non-Binary,31,Bachelor,5,79,No
+CAND_106,Male,42,PhD,14,92,Yes
+CAND_107,Female,36,Master,8,85,No
+CAND_108,Male,27,Bachelor,4,74,Yes
+CAND_109,Female,30,PhD,6,90,Yes
+CAND_110,Male,38,Master,9,82,Yes
+CAND_111,Female,46,Bachelor,12,71,No
+CAND_112,Non-Binary,24,Bachelor,1,70,No
+CAND_113,Male,31,Master,5,86,Yes
+CAND_114,Female,37,Bachelor,7,80,No
+CAND_115,Male,25,Bachelor,2,75,Yes
+CAND_116,Female,29,Master,4,87,No
+CAND_117,Male,39,PhD,11,91,Yes
+CAND_118,Female,22,Bachelor,1,64,No
+CAND_119,Male,28,Bachelor,3,78,Yes
+CAND_120,Non-Binary,35,Master,7,84,No
+CAND_121,Female,48,PhD,15,88,Yes
+CAND_122,Male,30,Master,5,80,Yes
+CAND_123,Female,32,Bachelor,4,77,No
+CAND_124,Male,36,Bachelor,8,81,Yes
+CAND_125,Female,35,Master,6,83,No
+CAND_126,Male,24,Bachelor,2,70,No
+CAND_127,Non-Binary,29,Master,4,79,No
+CAND_128,Female,31,PhD,5,86,Yes
+CAND_129,Male,49,Bachelor,16,77,Yes
+CAND_130,Female,23,Bachelor,1,65,No
+CAND_131,Male,28,Master,4,85,Yes
+CAND_132,Female,38,Bachelor,8,78,No
+CAND_133,Male,37,PhD,12,94,Yes
+CAND_134,Female,33,Master,3,81,No
+CAND_135,Non-Binary,44,Bachelor,11,72,No
+CAND_136,Male,32,Bachelor,5,83,Yes
+CAND_137,Female,47,Master,13,89,Yes
+CAND_138,Male,26,Bachelor,2,72,Yes
+CAND_139,Female,30,Bachelor,4,78,No
+CAND_140,Male,35,Master,7,86,Yes`;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -73,10 +65,10 @@ export default function App() {
   });
 
   const [config, setConfig] = useState({
-    targetColumn: 'selected',
-    protectedColumn: 'gender',
-    positiveValue: '1',
-    groundTruthColumn: 'qualified',
+    targetColumn: 'Selected',
+    protectedColumn: 'Gender',
+    positiveValue: 'Yes',
+    groundTruthColumn: 'Test_Score',
   });
 
   const [auditData, setAuditData] = useState(null);
@@ -84,16 +76,25 @@ export default function App() {
   const [error, setError] = useState(null);
   const [bountyPrefill, setBountyPrefill] = useState(null);
 
-  // Demo Guide Tour state
+  // Demo Tour State
   const [demoTourOpen, setDemoTourOpen] = useState(false);
   const [demoTourStep, setDemoTourStep] = useState(1);
 
-  // Client-side fallback audit engine
+  // Client-side Fairness Calculation Engine
   const runClientAudit = (records, cfg) => {
     const { targetColumn, protectedColumn, positiveValue, groundTruthColumn } = cfg;
     const groups = {};
-    const posValStr = String(positiveValue).trim().toLowerCase();
-    const truthCol = groundTruthColumn || 'qualified';
+    const posValStr = String(positiveValue || 'Yes').trim().toLowerCase();
+    const truthCol = groundTruthColumn || 'Test_Score';
+
+    const checkIsPositive = (val) => {
+      if (val === undefined || val === null) return false;
+      const v = String(val).trim().toLowerCase();
+      if (v === posValStr) return true;
+      if (posValStr === 'yes' && (v === 'yes' || v === '1' || v === 'true' || v === 'selected' || v === 'approved')) return true;
+      if (posValStr === '1' && (v === '1' || v === 'yes' || v === 'true')) return true;
+      return false;
+    };
 
     records.forEach((row) => {
       const g = String(row[protectedColumn] || '').trim();
@@ -101,10 +102,17 @@ export default function App() {
       if (!groups[g]) groups[g] = { group: g, total: 0, positiveCount: 0, tp: 0, fp: 0, tn: 0, fn: 0 };
       groups[g].total++;
 
-      const isPos = String(row[targetColumn] || '').trim().toLowerCase() === posValStr;
+      const isPos = checkIsPositive(row[targetColumn]);
       if (isPos) groups[g].positiveCount++;
 
-      const isTruthPos = String(row[truthCol] || '').trim().toLowerCase() === posValStr || String(row[truthCol]) === '1';
+      const rawTruth = row[truthCol];
+      let isTruthPos = false;
+      if (rawTruth !== undefined && !isNaN(Number(rawTruth))) {
+        isTruthPos = Number(rawTruth) >= 75;
+      } else {
+        isTruthPos = checkIsPositive(rawTruth);
+      }
+
       if (isPos && isTruthPos) groups[g].tp++;
       else if (isPos && !isTruthPos) groups[g].fp++;
       else if (!isPos && !isTruthPos) groups[g].tn++;
@@ -112,6 +120,8 @@ export default function App() {
     });
 
     const groupNames = Object.keys(groups);
+    if (groupNames.length === 0) return null;
+
     let refGroup = groupNames[0];
     let maxPosRate = -1;
 
@@ -169,9 +179,9 @@ export default function App() {
           metric: 'Disparate Impact Ratio',
           affectedGroup: name,
           metricValue: `${(disparateImpact * 100).toFixed(1)}%`,
-          evidence: `Positive outcome rate is ${(posRate * 100).toFixed(1)}% vs ${(refRate * 100).toFixed(1)}% for reference group (${refGroup}).`,
-          explanation: `The positive outcome rate for "${name}" is significantly below the 80% benchmark rule. Potential disparity detected — further investigation recommended. Disparity does not automatically prove intentional discrimination.`,
-          investigationGuide: `Review candidate feature representations, proxy correlates with ${protectedColumn}, and decision score thresholds.`,
+          evidence: `Positive selection rate is ${(posRate * 100).toFixed(1)}% vs ${(refRate * 100).toFixed(1)}% for reference group (${refGroup}).`,
+          explanation: `The selection rate for group "${name}" falls below the 80% four-fifths fairness guideline. Potential disparity detected — further investigation recommended. Disparity does not automatically prove intentional discrimination.`,
+          investigationGuide: `Review candidate qualification weighting, proxy correlates with ${protectedColumn}, and decision cutoff thresholds.`,
         });
       }
 
@@ -179,13 +189,27 @@ export default function App() {
         findings.push({
           id: `fnr-${name}`,
           severity: fnr > 0.5 ? 'High' : 'Moderate',
-          category: 'Outcome Error Rate Disparity',
+          category: 'Outcome Fairness Disparity',
           metric: 'False Negative Rate (FNR)',
           affectedGroup: name,
           metricValue: `${(fnr * 100).toFixed(1)}%`,
-          evidence: `False Negative Rate is ${(fnr * 100).toFixed(1)}%, indicating qualified individuals were rejected.`,
-          explanation: `Qualified candidates from group "${name}" have a higher rate of false rejection, indicating an unequal opportunity distribution.`,
-          investigationGuide: `Calibrate classification decision cutoffs to balance equalized odds across demographic subgroups.`,
+          evidence: `False Negative Rate is ${(fnr * 100).toFixed(1)}%, indicating qualified candidates were rejected.`,
+          explanation: `Qualified candidates from group "${name}" have a disproportionately high rejection rate, violating Equal Opportunity balance.`,
+          investigationGuide: `Calibrate subgroup score thresholds to equalize error distribution across demographic cohorts.`,
+        });
+      }
+
+      if (g.total < 10) {
+        findings.push({
+          id: `sample-${name}`,
+          severity: 'Low',
+          category: 'Representation Disparity',
+          metric: 'Sample Representation',
+          affectedGroup: name,
+          metricValue: `${g.total} samples`,
+          evidence: `Cohort contains only ${g.total} observations in the evaluation dataset.`,
+          explanation: `Small sample size detected for "${name}". Results should be interpreted cautiously due to small sample variance.`,
+          investigationGuide: `Collect more representative test evaluations for this demographic group.`,
         });
       }
     });
@@ -230,22 +254,14 @@ export default function App() {
           cols = json.columns;
           colTypes = json.columnTypes;
         } else {
-          throw new Error('Fallback to local');
+          throw new Error('Fallback to local parsing');
         }
       } catch (e) {
-        // Parse built-in CSV
-        const lines = DEFAULT_DEMO_CSV.trim().split('\n');
-        cols = lines[0].split(',');
-        records = lines.slice(1).map((line) => {
-          const vals = line.split(',');
-          const obj = {};
-          cols.forEach((col, i) => {
-            obj[col] = vals[i];
-          });
-          return obj;
-        });
+        const parsed = Papa.parse(DEFAULT_DEMO_CSV, { header: true, skipEmptyLines: true });
+        records = parsed.data;
+        cols = Object.keys(records[0] || {});
         cols.forEach((c) => {
-          colTypes[c] = ['id', 'experience', 'score', 'qualified', 'selected'].includes(c) ? 'numeric' : 'categorical';
+          colTypes[c] = ['Candidate_ID', 'Age', 'Experience_Years', 'Test_Score'].includes(c) ? 'numeric' : 'categorical';
         });
       }
 
@@ -254,14 +270,14 @@ export default function App() {
         columns: cols,
         columnTypes: colTypes,
         isDemo: true,
-        fileName: 'synthetic_demo_hiring_dataset.csv',
+        fileName: 'biasguard_test_dataset.csv',
       });
 
       const demoConfig = {
-        targetColumn: 'selected',
-        protectedColumn: 'gender',
-        positiveValue: '1',
-        groundTruthColumn: 'qualified',
+        targetColumn: 'Selected',
+        protectedColumn: 'Gender',
+        positiveValue: 'Yes',
+        groundTruthColumn: 'Test_Score',
       };
       setConfig(demoConfig);
 
@@ -277,7 +293,7 @@ export default function App() {
     }
   };
 
-  // Run audit
+  // Execute Audit
   const handleRunAudit = async () => {
     if (!datasetState.data || datasetState.data.length === 0) {
       setError('Please load or upload a dataset first.');
@@ -302,7 +318,7 @@ export default function App() {
           result = await res.json();
         }
       } catch (netErr) {
-        // Fallback to client calculations
+        // Fallback to local calculation
       }
 
       if (!result) {
@@ -310,7 +326,7 @@ export default function App() {
       }
 
       setAuditData(result);
-      setActiveTab('heatmap');
+      setActiveTab('fairness');
     } catch (err) {
       console.error(err);
       setError(err.message || 'Audit calculation failed.');
@@ -319,12 +335,12 @@ export default function App() {
     }
   };
 
-  // Auto load demo on initial visit if desired
+  // Auto load demo on initial startup
   useEffect(() => {
     handleLoadDemo(true);
   }, []);
 
-  // Handle tour steps
+  // Guided demo pitch steps
   const handleActionStep = (stepNum, targetTab) => {
     if (stepNum === 1) {
       handleLoadDemo(false);
@@ -332,7 +348,7 @@ export default function App() {
     } else if (stepNum === 2) {
       handleRunAudit();
     } else {
-      setActiveTab(targetTab);
+      setActiveTab(targetTab === 'heatmap' ? 'fairness' : targetTab);
     }
   };
 
@@ -343,7 +359,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-navy-950 text-slate-100 flex flex-col font-sans">
-      {/* Navbar */}
+      {/* Navbar with all 8 functional tabs */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -361,7 +377,7 @@ export default function App() {
             onStartAudit={() => setActiveTab('dashboard')}
             onLoadDemo={() => {
               handleLoadDemo(true);
-              setActiveTab('heatmap');
+              setActiveTab('fairness');
             }}
             onStartDemo={() => {
               setDemoTourStep(1);
@@ -385,7 +401,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'heatmap' && (
+        {(activeTab === 'fairness' || activeTab === 'heatmap') && (
           <BiasHeatmap auditData={auditData} />
         )}
 
@@ -406,11 +422,25 @@ export default function App() {
         )}
 
         {activeTab === 'report' && (
-          <AuditReport auditData={auditData} />
+          <AuditReport 
+            auditData={auditData} 
+            onLoadDemo={() => handleLoadDemo(true)} 
+          />
+        )}
+
+        {activeTab === 'stats' && (
+          <StatsAnalytics
+            dataset={datasetState.data}
+            columns={datasetState.columns}
+            columnTypes={datasetState.columnTypes}
+            auditData={auditData}
+            onLoadDemo={() => handleLoadDemo(true)}
+            onGoToDashboard={() => setActiveTab('dashboard')}
+          />
         )}
       </main>
 
-      {/* Interactive Hackathon Guided Demo Modal */}
+      {/* Interactive Hackathon Demo Modal */}
       <DemoGuideModal
         isOpen={demoTourOpen}
         onClose={() => setDemoTourOpen(false)}
