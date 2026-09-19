@@ -24,6 +24,16 @@ function inferColumnTypes(records) {
   return types;
 }
 
+function isPositive(val, positiveValue) {
+  if (val === undefined || val === null) return false;
+  const v = String(val).trim().toLowerCase();
+  const target = String(positiveValue).trim().toLowerCase();
+  if (v === target) return true;
+  if (target === 'yes' && (v === 'yes' || v === '1' || v === 'true' || v === 'selected' || v === 'approved')) return true;
+  if (target === '1' && (v === '1' || v === 'yes' || v === 'true')) return true;
+  return false;
+}
+
 function runAudit(records, config) {
   const { targetColumn, protectedColumn, positiveValue, groundTruthColumn } = config;
   
@@ -39,8 +49,9 @@ function runAudit(records, config) {
     throw new Error(`Protected column "${protectedColumn}" not found in dataset.`);
   }
 
-  const posValStr = String(positiveValue).trim().toLowerCase();
-  const truthCol = groundTruthColumn && columns.includes(groundTruthColumn) ? groundTruthColumn : (columns.includes('qualified') ? 'qualified' : null);
+  const truthCol = groundTruthColumn && columns.includes(groundTruthColumn) ? groundTruthColumn : (
+    columns.find(c => ['qualified', 'ground_truth', 'actual', 'test_score'].includes(c.toLowerCase())) || null
+  );
 
   // Group stats
   const groups = {};
@@ -71,14 +82,20 @@ function runAudit(records, config) {
     const g = groups[groupName];
     g.total++;
 
-    const isSelected = String(rawTarget).trim().toLowerCase() === posValStr;
+    const isSelected = isPositive(rawTarget, positiveValue);
     if (isSelected) {
       g.positiveCount++;
     }
 
     if (truthCol) {
       const rawTruth = row[truthCol];
-      const isQualified = String(rawTruth).trim().toLowerCase() === posValStr || String(rawTruth).trim() === '1' || String(rawTruth).trim().toLowerCase() === 'true';
+      let isQualified = false;
+      if (!isNaN(Number(rawTruth))) {
+        // e.g. Test_Score >= 75 is qualified benchmark
+        isQualified = Number(rawTruth) >= 75;
+      } else {
+        isQualified = isPositive(rawTruth, positiveValue);
+      }
       
       if (isSelected && isQualified) g.tp++;
       else if (isSelected && !isQualified) g.fp++;
@@ -127,14 +144,12 @@ function runAudit(records, config) {
       fnr = actualPositives > 0 ? g.fn / actualPositives : 0;
       accuracy = g.total > 0 ? (g.tp + g.tn) / g.total : 0;
     } else {
-      // Proxy estimation when no separate ground truth column
       fpr = posRate * 0.35;
       fnr = (1 - posRate) * 0.45;
       accuracy = 0.75 + (posRate > 0.5 ? 0.05 : -0.05);
     }
 
     // Determine Disparity Status based on standard prototype thresholds
-    // Disparate Impact standard 80% (0.80) rule
     let disparityStatus = 'Low Disparity';
     let statusColor = 'green';
     if (disparateImpact < 0.65 || disparateImpact > 1.5) {

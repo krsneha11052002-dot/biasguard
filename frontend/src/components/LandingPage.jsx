@@ -7,6 +7,7 @@ import {
   ArrowRight, 
   Database, 
   Sparkles, 
+  Download,
   FileCheck2, 
   AlertOctagon, 
   BarChart2, 
@@ -15,6 +16,15 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage({ onStartAudit, onLoadDemo, onStartDemo }) {
+  const handleDownloadSampleCSV = () => {
+    const link = document.createElement('a');
+    link.href = '/biasguard_test_dataset.csv';
+    link.download = 'biasguard_test_dataset.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-20 pb-16">
       {/* Hero Section */}
@@ -68,11 +78,11 @@ export default function LandingPage({ onStartAudit, onLoadDemo, onStartDemo }) {
             </button>
 
             <button
-              onClick={onStartDemo}
+              onClick={handleDownloadSampleCSV}
               className="flex items-center gap-2 px-5 py-3.5 rounded-xl font-medium text-sm text-brand-cyan hover:text-white bg-slate-900/60 border border-brand-teal/30 hover:border-brand-teal/60 transition-all"
             >
-              <Zap className="w-4 h-4 text-brand-teal" />
-              <span>Interactive Hackathon Pitch Walkthrough</span>
+              <Download className="w-4 h-4 text-brand-teal" />
+              <span>Download Sample CSV</span>
             </button>
           </div>
         </div>

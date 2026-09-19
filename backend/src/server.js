@@ -20,21 +20,46 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'BiasGuard AI', time: new Date().toISOString() });
 });
 
-// Demo data endpoint
+// Download sample test CSV endpoint
+app.get('/api/download-sample-csv', (req, res) => {
+  try {
+    const csvPath = path.join(__dirname, '..', 'data', 'biasguard_test_dataset.csv');
+    if (fs.existsSync(csvPath)) {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="biasguard_test_dataset.csv"');
+      return res.sendFile(csvPath);
+    }
+    const demoPath = path.join(__dirname, '..', 'data', 'demo.csv');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="biasguard_test_dataset.csv"');
+    res.sendFile(demoPath);
+  } catch (err) {
+    console.error('Error sending sample CSV:', err);
+    res.status(500).json({ error: 'Failed to download sample CSV' });
+  }
+});
+
+// Demo data JSON endpoint
 app.get('/api/demo-data', (req, res) => {
   try {
-    const demoPath = path.join(__dirname, '..', 'data', 'demo.csv');
+    const csvPath = path.join(__dirname, '..', 'data', 'biasguard_test_dataset.csv');
+    const demoPath = fs.existsSync(csvPath) ? csvPath : path.join(__dirname, '..', 'data', 'demo.csv');
     const fileContent = fs.readFileSync(demoPath, 'utf8');
     const records = parse(fileContent, { columns: true, skip_empty_lines: true, trim: true });
+    
+    // Check if outcome has Yes/No or 1/0
+    const sampleOutcome = records[0]?.['Selected'] || records[0]?.['selected'] || 'Yes';
+    const posVal = sampleOutcome.toLowerCase() === 'yes' || sampleOutcome.toLowerCase() === 'no' ? 'Yes' : '1';
+    
     res.json({
       records,
       columns: Object.keys(records[0] || {}),
       columnTypes: inferColumnTypes(records),
       suggestedConfig: {
-        targetColumn: 'selected',
-        protectedColumn: 'gender',
-        positiveValue: '1',
-        groundTruthColumn: 'qualified',
+        targetColumn: Object.keys(records[0] || {}).find(c => c.toLowerCase() === 'selected') || 'Selected',
+        protectedColumn: Object.keys(records[0] || {}).find(c => c.toLowerCase() === 'gender') || 'Gender',
+        positiveValue: posVal,
+        groundTruthColumn: Object.keys(records[0] || {}).find(c => c.toLowerCase() === 'test_score' || c.toLowerCase() === 'qualified') || '',
       },
     });
   } catch (err) {
@@ -43,7 +68,7 @@ app.get('/api/demo-data', (req, res) => {
   }
 });
 
-// Audit endpoint (accepts either uploaded CSV file or JSON records)
+// Audit endpoint
 app.post('/api/audit', upload.single('file'), (req, res) => {
   try {
     let records = [];
@@ -62,14 +87,15 @@ app.post('/api/audit', upload.single('file'), (req, res) => {
       records = req.body.records;
       config = req.body.config || req.body;
     } else if (req.body.useDemo) {
-      const demoPath = path.join(__dirname, '..', 'data', 'demo.csv');
+      const csvPath = path.join(__dirname, '..', 'data', 'biasguard_test_dataset.csv');
+      const demoPath = fs.existsSync(csvPath) ? csvPath : path.join(__dirname, '..', 'data', 'demo.csv');
       const fileContent = fs.readFileSync(demoPath, 'utf8');
       records = parse(fileContent, { columns: true, skip_empty_lines: true, trim: true });
       config = {
-        targetColumn: req.body.targetColumn || 'selected',
-        protectedColumn: req.body.protectedColumn || 'gender',
-        positiveValue: req.body.positiveValue || '1',
-        groundTruthColumn: req.body.groundTruthColumn || 'qualified',
+        targetColumn: req.body.targetColumn || 'Selected',
+        protectedColumn: req.body.protectedColumn || 'Gender',
+        positiveValue: req.body.positiveValue || 'Yes',
+        groundTruthColumn: req.body.groundTruthColumn || 'Test_Score',
       };
     } else {
       return res.status(400).json({ error: 'No dataset provided. Upload a CSV file or request demo dataset.' });
@@ -95,13 +121,10 @@ app.post('/api/simulate-mitigation', (req, res) => {
       return res.status(400).json({ error: 'Valid groupMetrics required for simulation' });
     }
 
-    // Reference group positive rate
     const refGroup = groupMetrics.find((m) => m.isReference) || groupMetrics[0];
     const targetRate = refGroup ? refGroup.positiveRate * 0.92 : 0.75;
 
-    // Simulate post-mitigation adjustments
     const simulatedMetrics = groupMetrics.map((m) => {
-      // Bring positive rates closer to target rate, reduce FPR/FNR disparities
       const adjustmentFactor = strategy === 'threshold-tuning' ? 0.75 : 0.85;
       const newPosRate = Number((m.positiveRate + (targetRate - m.positiveRate) * adjustmentFactor).toFixed(3));
       const newRefRate = Number(targetRate.toFixed(3));

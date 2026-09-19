@@ -9,7 +9,7 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Info, 
-  Filter, 
+  Download,
   SlidersHorizontal,
   FileCheck
 } from 'lucide-react';
@@ -29,6 +29,16 @@ export default function Dashboard({
   const fileInputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+
+  // Direct CSV download helper
+  const handleDownloadSampleCSV = () => {
+    const link = document.createElement('a');
+    link.href = '/biasguard_test_dataset.csv';
+    link.download = 'biasguard_test_dataset.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Handle CSV parsing on client
   const processCSV = (file) => {
@@ -50,7 +60,7 @@ export default function Dashboard({
 
         const cols = results.meta.fields || Object.keys(results.data[0]);
         if (cols.length < 2) {
-          setUploadError('The CSV file needs at least 2 columns (e.g., target outcome and protected group).');
+          setUploadError('The CSV file needs at least 2 columns (e.g., outcome and protected group).');
           return;
         }
 
@@ -72,7 +82,11 @@ export default function Dashboard({
         // Smart guess config
         const guessedTarget = cols.find(c => ['selected', 'hired', 'approved', 'target', 'outcome', 'label'].includes(c.toLowerCase())) || cols[cols.length - 1];
         const guessedProtected = cols.find(c => ['gender', 'sex', 'race', 'age_group', 'age', 'region', 'ethnicity'].includes(c.toLowerCase())) || cols[0];
-        const guessedTruth = cols.find(c => ['qualified', 'ground_truth', 'actual', 'y_true'].includes(c.toLowerCase())) || '';
+        const guessedTruth = cols.find(c => ['test_score', 'score', 'qualified', 'ground_truth', 'actual'].includes(c.toLowerCase())) || '';
+
+        // Detect positive outcome value (Yes vs 1)
+        const firstTargetVal = String(results.data[0]?.[guessedTarget] || '').trim().toLowerCase();
+        const detectedPosVal = (firstTargetVal === 'yes' || firstTargetVal === 'no') ? 'Yes' : '1';
 
         setDatasetState({
           data: results.data,
@@ -85,7 +99,7 @@ export default function Dashboard({
         setConfig({
           targetColumn: guessedTarget,
           protectedColumn: guessedProtected,
-          positiveValue: '1',
+          positiveValue: detectedPosVal,
           groundTruthColumn: guessedTruth,
         });
       },
@@ -125,7 +139,15 @@ export default function Dashboard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleDownloadSampleCSV}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 hover:text-white transition-all shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 text-brand-cyan" />
+            <span>Download Sample Dataset (.CSV)</span>
+          </button>
+
           <button
             onClick={onLoadDemo}
             disabled={loading}
@@ -168,7 +190,7 @@ export default function Dashboard({
             Drag and drop your evaluation CSV here, or click to browse files from your computer.
           </p>
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <span>Supports tabular CSV with demographic and outcome columns</span>
+            <span>Supports tabular CSV with demographic (Gender, Age) and outcome (Selected) columns</span>
           </div>
         </div>
 
@@ -177,23 +199,34 @@ export default function Dashboard({
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-brand-teal" />
-              <h4 className="text-sm font-bold text-white">Built-in Synthetic Demo</h4>
+              <h4 className="text-sm font-bold text-white">Built-in Synthetic Test Data</h4>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              Explore immediate bias detection with a pre-configured hiring decision dataset containing 50 candidates, multi-group demographics, score distributions, and intentional selection disparities.
+              Includes 40 fictional candidate records evaluating candidate qualifications (Test Score, Education, Experience) against hiring selection decisions across Gender cohorts.
             </p>
             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed mb-4">
-              <strong>Notice:</strong> Synthetic Demo Dataset — for demonstration only. Results do not reflect real-world demographic performance.
+              <strong>Notice:</strong> Synthetic Demo Dataset — for demonstration only. Contains fictional data with intentional disparities for testing.
             </div>
           </div>
-          <button
-            onClick={onLoadDemo}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-brand-blue to-brand-teal text-white shadow-md shadow-brand-teal/20 hover:opacity-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Load & Populate Demo</span>
-          </button>
+          
+          <div className="space-y-2">
+            <button
+              onClick={handleDownloadSampleCSV}
+              className="w-full py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Download className="w-3.5 h-3.5 text-brand-cyan" />
+              <span>Download Test CSV (40 Rows)</span>
+            </button>
+
+            <button
+              onClick={onLoadDemo}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-brand-blue to-brand-teal text-white shadow-md shadow-brand-teal/20 hover:opacity-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Load & Populate in App</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -227,7 +260,7 @@ export default function Dashboard({
             <div className="glass-card rounded-xl p-4 border border-slate-800">
               <p className="text-xs text-slate-400">Data Source</p>
               <p className="text-xs font-semibold text-slate-200 mt-2 truncate">
-                {config.isDemo ? 'Synthetic Demo CSV' : 'Uploaded File'}
+                {config.isDemo ? 'Synthetic Demo CSV' : (config.fileName || 'Uploaded CSV')}
               </p>
             </div>
           </div>
@@ -277,13 +310,13 @@ export default function Dashboard({
                     <option key={col} value={col}>{col}</option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">e.g. selected, hired, approved</p>
+                <p className="text-[10px] text-slate-400 mt-1">e.g. Selected, Hired, Approved</p>
               </div>
 
               {/* Protected column */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Protected Attribute / Demographic Column *
+                  Protected Demographic Column *
                 </label>
                 <select
                   value={config.protectedColumn || ''}
@@ -295,7 +328,7 @@ export default function Dashboard({
                     <option key={col} value={col}>{col}</option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">e.g. gender, age_group, region</p>
+                <p className="text-[10px] text-slate-400 mt-1">e.g. Gender, Age, Region</p>
               </div>
 
               {/* Positive Outcome Value */}
@@ -307,28 +340,28 @@ export default function Dashboard({
                   type="text"
                   value={config.positiveValue || ''}
                   onChange={(e) => setConfig({ ...config, positiveValue: e.target.value })}
-                  placeholder="e.g. 1 or true or Selected"
+                  placeholder="e.g. Yes or 1 or Selected"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-brand-teal transition-colors font-mono"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Favorable decision value</p>
+                <p className="text-[10px] text-slate-400 mt-1">Favorable decision (Yes, 1)</p>
               </div>
 
               {/* Ground Truth Column (Optional) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Ground Truth / Qualified Column (Optional)
+                  Qualification Benchmark (Optional)
                 </label>
                 <select
                   value={config.groundTruthColumn || ''}
                   onChange={(e) => setConfig({ ...config, groundTruthColumn: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-brand-teal transition-colors font-mono"
                 >
-                  <option value="">(None / Auto-estimate)</option>
+                  <option value="">(Auto-estimate)</option>
                   {columns.map((col) => (
                     <option key={col} value={col}>{col}</option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">Required for FPR & FNR calculations</p>
+                <p className="text-[10px] text-slate-400 mt-1">e.g. Test_Score (&ge;75) or Qualified</p>
               </div>
             </div>
 
